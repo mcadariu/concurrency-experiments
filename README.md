@@ -1,1 +1,1 @@
-Reading the [The Art of Multiprocessor Programming](https://shop.elsevier.com/books/the-art-of-multiprocessor-programming/herlihy/978-0-12-415950-1) book I felt the need at times to try out the theory with some experiments and check the numbers if they are as expected. I collect them in this repo for future reference. 
+Repo for storing experiments trying out the theory from the [The Art of Multiprocessor Programming](https://shop.elsevier.com/books/the-art-of-multiprocessor-programming/herlihy/978-0-12-415950-1). 
