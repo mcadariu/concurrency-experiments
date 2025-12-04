@@ -1,9 +1,9 @@
 package com.mcadariu.concurrency.benchmarks;
 
-import com.mcadariu.concurrency.primitives.AtomicCounter;
-import com.mcadariu.concurrency.primitives.Counter;
-import com.mcadariu.concurrency.primitives.ReentrantLockCounter;
-import com.mcadariu.concurrency.primitives.SynchronizedCounter;
+import com.mcadariu.concurrency.counters.AtomicCounter;
+import com.mcadariu.concurrency.counters.Counter;
+import com.mcadariu.concurrency.counters.ReentrantLockCounter;
+import com.mcadariu.concurrency.counters.SynchronizedCounter;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;

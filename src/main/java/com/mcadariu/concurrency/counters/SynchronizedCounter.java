@@ -1,4 +1,4 @@
-package com.mcadariu.concurrency.primitives;
+package com.mcadariu.concurrency.counters;
 
 public class SynchronizedCounter implements Counter {
     private long count = 0;

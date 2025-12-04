@@ -1,4 +1,4 @@
-package com.mcadariu.concurrency.primitives;
+package com.mcadariu.concurrency.counters;
 
 public interface Counter {
     void increment();
