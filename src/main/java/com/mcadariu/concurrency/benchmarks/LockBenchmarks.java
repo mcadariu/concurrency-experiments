@@ -1,214 +1,339 @@
 package com.mcadariu.concurrency.benchmarks;
 
+import com.mcadariu.concurrency.locks.*;
 import org.openjdk.jmh.annotations.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.util.concurrent.TimeUnit;
+
+/*
+Benchmark                              Mode  Cnt    Score    Error   Units
+LockBenchmarks.backoffLock_16Threads        thrpt    5  111.154 ±  6.249  ops/us
+LockBenchmarks.backoffLock_1Thread          thrpt    5  118.698 ±  2.970  ops/us
+LockBenchmarks.backoffLock_4Threads         thrpt    5  115.393 ±  4.074  ops/us
+LockBenchmarks.backoffLock_8Threads         thrpt    5  116.485 ±  3.370  ops/us
+LockBenchmarks.casLock_16Threads            thrpt    5    1.557 ±  0.622  ops/us
+LockBenchmarks.casLock_1Thread              thrpt    5  118.568 ±  2.069  ops/us
+LockBenchmarks.casLock_4Threads             thrpt    5    6.529 ±  3.958  ops/us
+LockBenchmarks.casLock_8Threads             thrpt    5    2.389 ±  0.512  ops/us
+LockBenchmarks.clhLock_16Threads            thrpt    5   ≈ 10⁻³           ops/us
+LockBenchmarks.clhLock_1Thread              thrpt    5  136.537 ±  5.921  ops/us
+LockBenchmarks.clhLock_4Threads             thrpt    5    5.456 ±  2.152  ops/us
+LockBenchmarks.clhLock_8Threads             thrpt    5    3.170 ±  2.942  ops/us
+LockBenchmarks.javaReentrantLock_16Threads  thrpt    5   53.089 ±  2.918  ops/us
+LockBenchmarks.javaReentrantLock_1Thread    thrpt    5   75.061 ±  7.957  ops/us
+LockBenchmarks.javaReentrantLock_4Threads   thrpt    5   54.705 ±  0.835  ops/us
+LockBenchmarks.javaReentrantLock_8Threads   thrpt    5   52.982 ±  6.509  ops/us
+LockBenchmarks.mcsLock_16Threads            thrpt    5    0.001 ±  0.001  ops/us
+LockBenchmarks.mcsLock_1Thread              thrpt    5   77.894 ±  3.604  ops/us
+LockBenchmarks.mcsLock_4Threads             thrpt    5    5.363 ±  1.017  ops/us
+LockBenchmarks.mcsLock_8Threads             thrpt    5    2.835 ±  0.793  ops/us
+LockBenchmarks.ttasLock_16Threads           thrpt    5    1.576 ±  1.081  ops/us
+LockBenchmarks.ttasLock_1Thread             thrpt    5  119.168 ±  4.192  ops/us
+LockBenchmarks.ttasLock_4Threads            thrpt    5    3.551 ±  0.886  ops/us
+LockBenchmarks.ttasLock_8Threads            thrpt    5    1.889 ±  0.940  ops/us
+ */
+
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@State(Scope.Benchmark)
+@Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(1)
 public class LockBenchmarks {
 
-    public static class CASLock {
-        private final AtomicBoolean state = new AtomicBoolean(false);
+    private Lock casLock;
+    private Lock ttasLock;
+    private Lock backoffLock;
+    private Lock clhLock;
+    private Lock mcsLock;
+    private Lock javaReentrantLock;
 
-        public void lock() {
-            while (!state.compareAndSet(false, true)) {
-            }
-        }
+    private int counter;
 
-        public void unlock() {
-            state.set(false);
-        }
+    @Setup(Level.Iteration)
+    public void setup() {
+        casLock = new CASLock();
+        ttasLock = new TTASLock();
+        backoffLock = new BackoffLock();
+        clhLock = new CLHLock();
+        mcsLock = new MCSLock();
+        javaReentrantLock = new JavaReentrantLock();
+        counter = 0;
     }
 
-    public static class TTASLock {
-        private final AtomicBoolean state = new AtomicBoolean(false);
-
-        public void lock() {
-            for (;;) {
-                while (state.get()) {
-                }
-                if (state.compareAndSet(false, true)) {
-                    return;
-                }
-            }
-        }
-
-        public void unlock() {
-            state.set(false);
-        }
-    }
-
-    @State(Scope.Group)
-    public static class CasState {
-        final CASLock lock = new CASLock();
-        int counter = 0;
-    }
-
-    @State(Scope.Group)
-    public static class TtasState {
-        final TTASLock lock = new TTASLock();
-        int counter = 0;
-    }
-
-    @Group("cas")
     @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void cas_lock(CasState s) {
-        s.lock.lock();
+    @Threads(1)
+    public void casLock_1Thread() throws InterruptedException {
+        casLock.lock();
         try {
-            s.counter++;
+            counter++;
         } finally {
-            s.lock.unlock();
+            casLock.unlock();
         }
     }
 
-    @Group("ttas")
     @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void ttas_lock(TtasState s) {
-        s.lock.lock();
+    @Threads(4)
+    public void casLock_4Threads() throws InterruptedException {
+        casLock.lock();
         try {
-            s.counter++;
+            counter++;
         } finally {
-            s.lock.unlock();
+            casLock.unlock();
         }
     }
 
-    public static class BackoffLock {
-        private final AtomicBoolean state = new AtomicBoolean(false);
-
-        public void lock() throws InterruptedException {
-            int delay = 1;
-            while (true) {
-                while (state.get()) {
-                }
-                if (state.compareAndSet(false, true)) return;
-                TimeUnit.NANOSECONDS.sleep(delay);
-                delay = Math.min(delay * 2, 1_000_000);
-            }
-        }
-
-        public void unlock() {
-            state.set(false);
-        }
-    }
-
-    public static class CLHLock {
-        private static class QNode { volatile boolean locked = true; }
-        private final ThreadLocal<QNode> myNode = ThreadLocal.withInitial(QNode::new);
-        private final ThreadLocal<QNode> myPred = new ThreadLocal<>();
-        private final AtomicReference<QNode> tail = new AtomicReference<>(new QNode());
-
-        public void lock() {
-            QNode node = myNode.get();
-            node.locked = true;
-            QNode pred = tail.getAndSet(node);
-            myPred.set(pred);
-            while (pred.locked) {
-            }
-        }
-
-        public void unlock() {
-            QNode node = myNode.get();
-            node.locked = false;
-            myNode.set(new QNode());
-        }
-    }
-
-    public static class MCSLock {
-        private static class QNode { volatile boolean locked; volatile QNode next; }
-        private final AtomicReference<QNode> tail = new AtomicReference<>(null);
-        private final ThreadLocal<QNode> myNode = ThreadLocal.withInitial(QNode::new);
-
-        public void lock() {
-            QNode node = myNode.get();
-            node.locked = true;
-            node.next = null;
-            QNode pred = tail.getAndSet(node);
-            if (pred != null) {
-                pred.next = node;
-                while (node.locked) {
-                }
-            }
-        }
-
-        public void unlock() {
-            QNode node = myNode.get();
-            if (node.next == null) {
-                if (tail.compareAndSet(node, null)) return;
-                while (node.next == null) {}
-            }
-            node.next.locked = false;
-            node.next = null;
-        }
-    }
-
-    @State(Scope.Group)
-    public static class BackoffState {
-        final BackoffLock lock = new BackoffLock();
-        int counter = 0;
-    }
-
-    @Group("backoff")
     @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void backoff_lock(BackoffState s) throws Exception {
-        s.lock.lock();
+    @Threads(8)
+    public void casLock_8Threads() throws InterruptedException {
+        casLock.lock();
         try {
-            s.counter++;
+            counter++;
         } finally {
-            s.lock.unlock();
+            casLock.unlock();
         }
     }
 
-    @State(Scope.Group)
-    public static class CLHState {
-        final CLHLock lock = new CLHLock();
-        int counter = 0;
-    }
-
-    @Group("clh")
     @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void clh_lock(CLHState s) {
-        s.lock.lock();
+    @Threads(16)
+    public void casLock_16Threads() throws InterruptedException {
+        casLock.lock();
         try {
-            s.counter++;
+            counter++;
         } finally {
-            s.lock.unlock();
+            casLock.unlock();
         }
     }
 
-    @State(Scope.Group)
-    public static class MCSState {
-        final MCSLock lock = new MCSLock();
-        int counter = 0;
-    }
-
-    @Group("mcs")
     @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void mcs_lock(MCSState s) {
-        s.lock.lock();
+    @Threads(1)
+    public void ttasLock_1Thread() throws InterruptedException {
+        ttasLock.lock();
         try {
-            s.counter++;
+            counter++;
         } finally {
-            s.lock.unlock();
+            ttasLock.unlock();
         }
     }
-    public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.runner.options.Options opt = new org.openjdk.jmh.runner.options.OptionsBuilder()
+
+    @Benchmark
+    @Threads(4)
+    public void ttasLock_4Threads() throws InterruptedException {
+        ttasLock.lock();
+        try {
+            counter++;
+        } finally {
+            ttasLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(8)
+    public void ttasLock_8Threads() throws InterruptedException {
+        ttasLock.lock();
+        try {
+            counter++;
+        } finally {
+            ttasLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(16)
+    public void ttasLock_16Threads() throws InterruptedException {
+        ttasLock.lock();
+        try {
+            counter++;
+        } finally {
+            ttasLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(1)
+    public void backoffLock_1Thread() throws InterruptedException {
+        backoffLock.lock();
+        try {
+            counter++;
+        } finally {
+            backoffLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(4)
+    public void backoffLock_4Threads() throws InterruptedException {
+        backoffLock.lock();
+        try {
+            counter++;
+        } finally {
+            backoffLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(8)
+    public void backoffLock_8Threads() throws InterruptedException {
+        backoffLock.lock();
+        try {
+            counter++;
+        } finally {
+            backoffLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(16)
+    public void backoffLock_16Threads() throws InterruptedException {
+        backoffLock.lock();
+        try {
+            counter++;
+        } finally {
+            backoffLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(1)
+    public void clhLock_1Thread() throws InterruptedException {
+        clhLock.lock();
+        try {
+            counter++;
+        } finally {
+            clhLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(4)
+    public void clhLock_4Threads() throws InterruptedException {
+        clhLock.lock();
+        try {
+            counter++;
+        } finally {
+            clhLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(8)
+    public void clhLock_8Threads() throws InterruptedException {
+        clhLock.lock();
+        try {
+            counter++;
+        } finally {
+            clhLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(16)
+    public void clhLock_16Threads() throws InterruptedException {
+        clhLock.lock();
+        try {
+            counter++;
+        } finally {
+            clhLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(1)
+    public void mcsLock_1Thread() throws InterruptedException {
+        mcsLock.lock();
+        try {
+            counter++;
+        } finally {
+            mcsLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(4)
+    public void mcsLock_4Threads() throws InterruptedException {
+        mcsLock.lock();
+        try {
+            counter++;
+        } finally {
+            mcsLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(8)
+    public void mcsLock_8Threads() throws InterruptedException {
+        mcsLock.lock();
+        try {
+            counter++;
+        } finally {
+            mcsLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(16)
+    public void mcsLock_16Threads() throws InterruptedException {
+        mcsLock.lock();
+        try {
+            counter++;
+        } finally {
+            mcsLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(1)
+    public void javaReentrantLock_1Thread() throws InterruptedException {
+        javaReentrantLock.lock();
+        try {
+            counter++;
+        } finally {
+            javaReentrantLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(4)
+    public void javaReentrantLock_4Threads() throws InterruptedException {
+        javaReentrantLock.lock();
+        try {
+            counter++;
+        } finally {
+            javaReentrantLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(8)
+    public void javaReentrantLock_8Threads() throws InterruptedException {
+        javaReentrantLock.lock();
+        try {
+            counter++;
+        } finally {
+            javaReentrantLock.unlock();
+        }
+    }
+
+    @Benchmark
+    @Threads(16)
+    public void javaReentrantLock_16Threads() throws InterruptedException {
+        javaReentrantLock.lock();
+        try {
+            counter++;
+        } finally {
+            javaReentrantLock.unlock();
+        }
+    }
+
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
                 .include(LockBenchmarks.class.getSimpleName())
-                .warmupIterations(3)
-                .measurementIterations(5)
-                .forks(1)
                 .build();
 
-        new org.openjdk.jmh.runner.Runner(opt).run();
+        new Runner(opt).run();
     }
 }
