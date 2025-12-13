@@ -28,21 +28,15 @@ public class LockFreeQueue<T> implements Queue<T> {
         while (true) {
             Node<T> last = tail.get();
             Node<T> next = last.next.get();
-
-            Node<T> currentTail;
-            while ((currentTail = tail.get()) != last) {
-                last = currentTail;
-                next = last.next.get();
-                Thread.onSpinWait();
-            }
-
-            if (next == null) {
-                if (last.next.compareAndSet(next, node)) {
-                    tail.compareAndSet(last, node);
-                    return;
+            if (last == tail.get()) {
+                if (next == null) {
+                    if (last.next.compareAndSet(next, node)) {
+                        tail.compareAndSet(last, node);
+                        return;
+                    }
+                } else {
+                    tail.compareAndSet(last, next);
                 }
-            } else {
-                tail.compareAndSet(last, next);
             }
         }
     }
@@ -53,24 +47,17 @@ public class LockFreeQueue<T> implements Queue<T> {
             Node<T> first = head.get();
             Node<T> last = tail.get();
             Node<T> next = first.next.get();
-
-            Node<T> currentHead;
-            while ((currentHead = head.get()) != first) {
-                first = currentHead;
-                last = tail.get();
-                next = first.next.get();
-                Thread.onSpinWait();
-            }
-
-            if (first == last) {
-                if (next == null) {
-                    return null;
-                }
-                tail.compareAndSet(last, next);
-            } else {
-                T value = next.value;
-                if (head.compareAndSet(first, next)) {
-                    return value;
+            if (first == head.get()) {
+                if (first == last) {
+                    if (next == null) {
+                        return null;
+                    }
+                    tail.compareAndSet(last, next);
+                } else {
+                    T value = next.value;
+                    if (head.compareAndSet(first, next)) {
+                        return value;
+                    }
                 }
             }
         }
