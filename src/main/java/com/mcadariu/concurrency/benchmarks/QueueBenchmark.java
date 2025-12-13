@@ -11,8 +11,22 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+
+/*
+QueueBenchmark.boundedQueue_16Threads            thrpt    5  22.825 ± 11.926  ops/us
+QueueBenchmark.boundedQueue_1Thread              thrpt    5  45.591 ±  3.994  ops/us
+QueueBenchmark.boundedQueue_4Threads             thrpt    5  29.819 ±  4.303  ops/us
+QueueBenchmark.boundedQueue_8Threads             thrpt    5  22.017 ± 11.182  ops/us
+QueueBenchmark.lockFreeQueue_16Threads           thrpt    5   2.385 ±  0.669  ops/us
+QueueBenchmark.lockFreeQueue_1Thread             thrpt    5  50.607 ±  1.823  ops/us
+QueueBenchmark.lockFreeQueue_4Threads            thrpt    5   6.187 ±  2.902  ops/us
+QueueBenchmark.lockFreeQueue_8Threads            thrpt    5   3.431 ±  1.760  ops/us
+QueueBenchmark.unboundedQueue_16Threads          thrpt    5  18.737 ±  6.566  ops/us
+QueueBenchmark.unboundedQueue_1Thread            thrpt    5  28.534 ±  4.936  ops/us
+QueueBenchmark.unboundedQueue_4Threads           thrpt    5  22.377 ±  1.829  ops/us
+QueueBenchmark.unboundedQueue_8Threads           thrpt    5  21.602 ±  3.370  ops/us
+ */
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -25,6 +39,7 @@ public class QueueBenchmark {
     private Queue<Integer> boundedQueue;
     private Queue<Integer> unboundedQueue;
     private Queue<Integer> lockFreeQueue;
+    private Queue<Integer> optimizedLockFreeQueue;
 
     private AtomicInteger dummy;
 
@@ -39,6 +54,7 @@ public class QueueBenchmark {
             boundedQueue.enq(1);
             unboundedQueue.enq(1);
             lockFreeQueue.enq(1);
+            optimizedLockFreeQueue.enq(1);
         }
     }
 
