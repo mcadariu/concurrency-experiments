@@ -1,1 +1,1 @@
-Repo for storing experiments based using concurrent data structures from [The Art of Multiprocessor Programming](https://shop.elsevier.com/books/the-art-of-multiprocessor-programming/herlihy/978-0-12-415950-1). 
+Repo for storing experiments using concurrent data structures from [The Art of Multiprocessor Programming](https://shop.elsevier.com/books/the-art-of-multiprocessor-programming/herlihy/978-0-12-415950-1). 
